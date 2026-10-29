@@ -93,7 +93,55 @@ Backend desarrollado con FastAPI, Pandas y Scikit-learn para procesar datos hist
     "victorias_visitante": 2
   }
   ```
-  
+
+---
+
+### 5. Obtener Racha Personalizada y Resultados (Últimos N Partidos)
+* **URL:** `/stats/streak`
+* **Método:** `POST`
+* **Descripción:** Devuelve el historial de resultados individuales (`G` = Ganado, `E` = Empatado, `P` = Perdido) y promedios de goles en un rango configurable de días o partidos previos (`days`).
+* **Cuerpo de la Petición (JSON Body):**
+  ```json
+  {
+    "Home": "Guadalajara Chivas",
+    "Away": "Club America",
+    "days": 5
+  }
+  ```
+
+ * **Ejemplo de respuesta (`200 OK`):**
+  ```json
+  {
+    "local": {
+        "equipo": "Guadalajara Chivas",
+        "days_consultados": 5,
+        "racha_resultados": [
+            "G",
+            "E",
+            "G",
+            "G",
+            "E"
+        ],
+        "promedio_gf": 2.8,
+        "promedio_gc": 1
+    },
+    "visitante": {
+        "equipo": "Club America",
+        "days_consultados": 5,
+        "racha_resultados": [
+            "G",
+            "G",
+            "G",
+            "P",
+            "E"
+        ],
+        "promedio_gf": 2.4,
+        "promedio_gc": 1.4
+    }
+  }
+  ```
+
+---
 
 ## Documentación Interactiva
 Puedes probar los endpoints directamente desde la interfaz automática de Swagger visitando la ruta `/docs` de tu servidor en ejecución.
