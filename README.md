@@ -27,7 +27,7 @@ Backend desarrollado con FastAPI, Pandas y Scikit-learn para procesar datos hist
 ---
 
 ### 2. Consultar Fatiga (Días de Descanso)
-* **Ruta:** `/stats/fatiga`
+* **Ruta:** `/stats/fatigue`
 * **Método:** `POST`
 * **Descripción:** Consulta el último registro del enfrentamiento para calcular los días de descanso de ambos equipos.
 * **Cuerpo de la petición (JSON):**
