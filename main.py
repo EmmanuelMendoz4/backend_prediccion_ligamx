@@ -69,3 +69,21 @@ def predict_match(match: MatchRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@app.post("/stats/fatigue", summary="Obtener días de descanso", tags=["Estadísticas"])
+def obtener_fatiga(match: MatchRequest):
+    """
+    Devuelve los días de descanso con los que llega cada equipo al partido.
+    """
+    filtro = (df_maestro['Home'] == match.Home) & (df_maestro['Away'] == match.Away)
+    partido = df_maestro[filtro].tail(1)
+    
+    if partido.empty:
+        raise HTTPException(status_code=404, detail="No hay historial para estos equipos")
+        
+    return {
+        "equipo_local": match.Home,
+        "equipo_visitante": match.Away,
+        "dias_descanso_local": int(partido['loc_descanso'].values[0]),
+        "dias_descanso_visitante": int(partido['vis_descanso'].values[0])
+    }
