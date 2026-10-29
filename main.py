@@ -39,6 +39,15 @@ def obtener_ultimas_estadisticas(Home, Away, df):
     
     return features
 
+@app.get("/teams")
+def obtener_equipos():
+    try:
+        # Extrae los nombres únicos de los equipos de la columna 'Home' y los ordena alfabéticamente
+        lista_equipos = sorted(df_maestro['Home'].dropna().unique().tolist())
+        return {"equipos": lista_equipos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al leer los equipos")
+
 @app.post("/predict")
 def predict_match(match: MatchRequest):
     try:
