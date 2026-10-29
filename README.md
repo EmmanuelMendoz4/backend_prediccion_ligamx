@@ -72,5 +72,28 @@ Backend desarrollado con FastAPI, Pandas y Scikit-learn para procesar datos hist
 
 ---
 
+### 4. Obtener Historial Directo (H2H)
+* **Ruta:** `/stats/h2h`
+* **Método:** `POST`
+* **Descripción:** Devuelve el historial acumulado de enfrentamientos previos (victorias local, empates, victorias visitante) entre ambos equipos.
+* **Cuerpo de la Petición (JSON Body):**
+  ```json
+  {
+    "Home": "Guadalajara Chivas",
+    "Away": "Club America"
+  }
+  ```
+* **Ejemplo de respuesta (`200 OK`):**
+  ```json
+  {
+    "equipo_local": "Guadalajara Chivas",
+    "equipo_visitante": "Club America",
+    "victorias_local": 1,
+    "empates": 2,
+    "victorias_visitante": 2
+  }
+  ```
+  
+
 ## Documentación Interactiva
 Puedes probar los endpoints directamente desde la interfaz automática de Swagger visitando la ruta `/docs` de tu servidor en ejecución.

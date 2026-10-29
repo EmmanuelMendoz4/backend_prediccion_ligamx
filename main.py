@@ -87,3 +87,24 @@ def obtener_fatiga(match: MatchRequest):
         "dias_descanso_local": int(partido['loc_descanso'].values[0]),
         "dias_descanso_visitante": int(partido['vis_descanso'].values[0])
     }
+
+@app.post("/stats/h2h", summary="Obtener historial directo (H2H)", tags=["Estadísticas"])
+def obtener_h2h(match: MatchRequest):
+    """
+    Devuelve el historial directo de enfrentamientos (H2H) entre el equipo local y el visitante
+    para alimentar la gráfica de barras comparativa.
+    """
+    filtro = (df_maestro['Home'] == match.Home) & (df_maestro['Away'] == match.Away)
+    partido = df_maestro[filtro].tail(1)
+    
+    if partido.empty:
+        raise HTTPException(status_code=404, detail="No hay historial para estos equipos")
+        
+    return {
+        "equipo_local": match.Home,
+        "equipo_visitante": match.Away,
+        # Si tu Data Lead les puso otro nombre, solo cámbialo aquí adentro de los corchetes.
+        "victorias_local": int(partido['h2h_victorias_local'].values[0]),
+        "empates": int(partido['h2h_empates'].values[0]),
+        "victorias_visitante": int(partido['h2h_victorias_visitante'].values[0])
+    }
