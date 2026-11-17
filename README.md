@@ -148,5 +148,36 @@ Backend desarrollado con FastAPI, Pandas y Scikit-learn para procesar datos hist
 
 ---
 
+### 6. Obtener Tabla General de Posiciones (Con filtros de temporada y torneo)
+* **RUTA:** `/stats/table`
+* **Método:** `GET`
+* **Parámetros de consulta (Query Params):** 
+  * `season` (opcional): Especifica la temporada a consultar (Ej. `2023/2024`). Si se omite, devuelve automáticamente la más reciente del dataset.
+  * `tournament` (opcional): Filtra por torneo corto (`Apertura` o `Clausura`). Si se omite, calcula el acumulado completo o anual disponible.
+* **Descripción:** Calcula y devuelve el estado actual de la tabla general con estadísticas acumuladas (partidos jugados, ganados, empatados, perdidos, goles a favor, goles en contra, diferencia y puntos), ordenada por rendimiento.
+* **Ejemplo de Petición:** `GET /stats/table?season=2023/2024&tournament=Apertura`
+* **Ejemplo de Respuesta (`200 OK`):**
+  ```json
+  {
+    "season": "2023/2024",
+    "tournament": "Apertura",
+    "standings": [
+      {
+        "position": 1,
+        "team": "Club America",
+        "played": 17,
+        "won": 12,
+        "drawn": 4,
+        "lost": 1,
+        "goals_for": 37,
+        "goals_against": 14,
+        "goal_difference": 23,
+        "points": 40
+      }
+    ]
+  }
+
+---
+
 ## Documentación Interactiva
 Puedes probar los endpoints directamente desde la interfaz automática de Swagger visitando la ruta `/docs` de tu servidor en ejecución.

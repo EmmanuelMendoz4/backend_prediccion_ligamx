@@ -179,3 +179,115 @@ def obtener_racha(request: RachaRequest):
         "local": local_data,
         "visitante": visitante_data
     }
+    
+from typing import Optional
+
+@app.get("/stats/table", summary="Obtener tabla general de la Liga MX por temporada y torneo", tags=["Estadísticas"])
+def obtener_tabla_general(season: Optional[str] = None, tournament: Optional[str] = None):
+    """
+    Devuelve la tabla general filtrada por temporada y opcionalmente por torneo (Apertura / Clausura).
+    - Apertura: Partidos de Julio a Diciembre.
+    - Clausura: Partidos de Enero a Junio.
+    Si no se especifica temporada, toma la más reciente.
+    """
+    try:
+        if not season:
+            season = df_maestro['Season'].dropna().max()
+            
+        # 1. Filtrar por temporada base
+        df_temporada = df_maestro[df_maestro['Season'] == season].copy()
+        
+        if df_temporada.empty:
+            raise HTTPException(status_code=404, detail=f"No se encontraron datos para la temporada '{season}'")
+        
+        # 2. Asegurar formato de fecha para extraer el mes
+        df_temporada['Date'] = pd.to_datetime(df_temporada['Date'])
+        df_temporada['Month'] = df_temporada['Date'].dt.month
+        
+        # 3. Aplicar filtro de Torneo si el usuario lo solicita
+        if tournament:
+            t_lower = tournament.lower()
+            if t_lower == 'apertura':
+                # Apertura: Meses 7 a 12 (Julio - Diciembre)
+                df_temporada = df_temporada[df_temporada['Month'].isin([7, 8, 9, 10, 11, 12])]
+            elif t_lower == 'clausura':
+                # Clausura: Meses 1 a 6 (Enero - Junio)
+                df_temporada = df_temporada[df_temporada['Month'].isin([1, 2, 3, 4, 5, 6])]
+            else:
+                raise HTTPException(status_code=400, detail="El parámetro 'tournament' debe ser 'Apertura' o 'Clausura'")
+
+        if df_temporada.empty:
+            raise HTTPException(status_code=404, detail=f"No hay partidos registrados para el torneo {tournament} en la temporada {season}")
+
+        equipos = df_temporada['Home'].dropna().unique()
+        tabla_datos = []
+        
+        for equipo in equipos:
+            partidos_local = df_temporada[df_temporada['Home'] == equipo]
+            partidos_visitante = df_temporada[df_temporada['Away'] == equipo]
+            
+            jj = len(partidos_local) + len(partidos_visitante)
+            if jj == 0:
+                continue
+                
+            jg, je, jp, gf, gc, pts = 0, 0, 0, 0, 0, 0
+            
+            for _, row in partidos_local.iterrows():
+                goles_favor = int(row['HG'])
+                goles_contra = int(row['AG'])
+                gf += goles_favor
+                gc += goles_contra
+                
+                if goles_favor > goles_contra:
+                    jg += 1
+                    pts += 3
+                elif goles_favor == goles_contra:
+                    je += 1
+                    pts += 1
+                else:
+                    jp += 1
+                    
+            for _, row in partidos_visitante.iterrows():
+                goles_favor = int(row['AG'])
+                goles_contra = int(row['HG'])
+                gf += goles_favor
+                gc += goles_contra
+                
+                if goles_favor > goles_contra:
+                    jg += 1
+                    pts += 3
+                elif goles_favor == goles_contra:
+                    je += 1
+                    pts += 1
+                else:
+                    jp += 1
+                    
+            dif = gf - gc
+            
+            tabla_datos.append({
+                "team": equipo,
+                "played": jj,
+                "won": jg,
+                "drawn": je,
+                "lost": jp,
+                "goals_for": gf,
+                "goals_against": gc,
+                "goal_difference": dif,
+                "points": pts
+            })
+            
+        tabla_ordenada = sorted(tabla_datos, key=lambda x: (x['points'], x['goal_difference']), reverse=True)
+        
+        for index, row in enumerate(tabla_ordenada, start=1):
+            row["position"] = index
+            
+        return {
+            "season": season,
+            "tournament": tournament if tournament else "Completo (Anual)",
+            "standings": tabla_ordenada
+        }
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al calcular la tabla general: {str(e)}")
