@@ -90,24 +90,36 @@ def obtener_equipos():
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error al leer los equipos")
 
-@app.post("/predict")
+@app.post("/predict", summary="Predecir resultado y probabilidades", tags=["Predicciones"])
 def predict_match(match: MatchRequest):
     try:
-        # 1. Extraer los datos (DataFrame de 1 fila y 27 columnas)
         features_df = obtener_ultimas_estadisticas(match.Home, match.Away, df_maestro)
         
-        # 2. Hacer la predicción real
-        prediccion = modelo.predict(features_df)[0] # Ej: 'H', 'D', 'A'
-        
-        # 3. Obtener la probabilidad (confianza) de esa predicción
+        prediccion = modelo.predict(features_df)[0]
         probabilidades = modelo.predict_proba(features_df)[0]
-        confianza_maxima = round(float(np.max(probabilidades)) * 100, 2)
+        
+        # Empareja cada clase del modelo con su probabilidad redondeada
+        mapa_probs = {
+            str(clase): round(float(prob) * 100, 2)
+            for clase, prob in zip(modelo.classes_, probabilidades)
+        }
+        
+        # Nota: Si tus clases en el modelo son '0', '1', '2' en lugar de 'H', 'D', 'A', 
+        # ajusta las llaves dentro de mapa_probs.get(...)
+        home_prob = mapa_probs.get("H", mapa_probs.get("1", 0.0))
+        draw_prob = mapa_probs.get("D", mapa_probs.get("0", 0.0))
+        away_prob = mapa_probs.get("A", mapa_probs.get("2", 0.0))
         
         return {
             "Home": match.Home,
             "Away": match.Away,
-            "prediction": str(prediccion), 
-            "confidence_percentage": confianza_maxima
+            "prediction": str(prediccion),
+            "confidence_percentage": round(float(np.max(probabilidades)) * 100, 2),
+            "probabilities": {
+                "home_win": home_prob,
+                "draw": draw_prob,
+                "away_win": away_prob
+            }
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

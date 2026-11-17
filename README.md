@@ -49,11 +49,11 @@ Backend desarrollado con FastAPI, Pandas y Scikit-learn para procesar datos hist
 
 ---
 
-### 3. Predecir Partido
-* **Ruta:** `/predict`
+### 3. Predecir Partido y Desglose de Probabilidades
+* **RUTA:** `/predict`
 * **Método:** `POST`
-* **Descripción:** Procesa el contexto histórico y ejecuta el modelo de Machine Learning para calcular la probabilidad del resultado.
-* **Cuerpo de la petición (JSON):**
+* **Descripción:** Ejecuta el modelo de Machine Learning sobre el contexto histórico de ambos equipos y devuelve tanto el resultado más probable como el desglose porcentual de los tres escenarios posibles (Local, Empate, Visitante).
+* **Cuerpo de la Petición (JSON Body):**
   ```json
   {
     "Home": "Guadalajara Chivas",
@@ -65,8 +65,13 @@ Backend desarrollado con FastAPI, Pandas y Scikit-learn para procesar datos hist
   {
     "Home": "Guadalajara Chivas",
     "Away": "Club America",
-    "prediction": "0",
-    "confidence_percentage": 38.44
+    "prediction": "H",
+    "confidence_percentage": 48.0,
+    "probabilities": {
+      "home_win": 48.0,
+      "draw": 28.0,
+      "away_win": 24.0
+    }
   }
   ```
 
