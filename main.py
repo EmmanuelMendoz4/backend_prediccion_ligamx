@@ -3,9 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from pydantic import BaseModel, Field
+import os
 import joblib
 import pandas as pd
 import numpy as np
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="API Predicción Liga MX")
 
@@ -20,7 +25,16 @@ app.add_middleware(
 # 1. Cargar el modelo y el dataset al iniciar
 datos_exportados = joblib.load('modelo_ligamx.joblib')
 modelo = datos_exportados['modelo']
-df_maestro = pd.read_csv('dataset_maestro.csv')
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("No se encontró la variable de entorno DATABASE_URL")
+
+# Crear el motor de conexión a PostgreSQL
+engine = create_engine(DATABASE_URL)
+
+# Cargar los datos directo de la tabla en Supabase al iniciar la API
+df_maestro = pd.read_sql("SELECT * FROM dataset_maestro", con=engine)
 
 class MatchRequest(BaseModel):
     Home: str
