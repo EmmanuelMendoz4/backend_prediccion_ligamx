@@ -70,7 +70,6 @@ def obtener_historial_equipo(df, equipo, days):
     
     for _, fila in partidos.iterrows():
         es_local = fila['Home'] == equipo
-        # Ajusta 'HomeGoals' y 'AwayGoals' si en tu CSV se llaman distinto (ej: 'GolesLocal', 'FTHG')
         gf = int(fila['HG']) if es_local else int(fila['AG'])
         gc = int(fila['AG']) if es_local else int(fila['HG'])
         
