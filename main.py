@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 import os
 import joblib
@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
+from ai_analyst import generate_match_ai_response
 
 load_dotenv()
 
@@ -44,6 +45,21 @@ class RachaRequest(BaseModel):
     Home: str = Field(..., description="Nombre del equipo local")
     Away: str = Field(..., description="Nombre del equipo visitante")
     days: Optional[int] = Field(default=5, description="Número de partidos a consultar")
+    
+
+class AIAnalysisRequest(BaseModel):
+    home: str
+    away: str
+    prob_local: Optional[float] = None
+    prob_empate: Optional[float] = None
+    prob_visitante: Optional[float] = None
+    descanso_local: Optional[Any] = None
+    descanso_visitante: Optional[Any] = None
+    racha_local: Optional[str] = None
+    racha_visitante: Optional[str] = None
+    h2h: Optional[str] = None
+    action: str = "summary"  # "summary" | "question" | "executive_brief" | "model_limits"
+    question: Optional[str] = ""
 
 # Función para extraer las 27 características
 def obtener_ultimas_estadisticas(Home, Away, df):
@@ -304,3 +320,57 @@ def obtener_tabla_general(season: Optional[str] = None, tournament: Optional[str
         raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al calcular la tabla general: {str(e)}")
+    
+@app.post("/ai/match-analysis", summary="Análisis estructurado y consultas con IA", tags=["IA"])
+def ai_match_analysis(payload: AIAnalysisRequest):
+    match_data = payload.model_dump(exclude={"action", "question"})
+
+    # Completar automáticamente desde el modelo y dataset si el cliente no mandó algún dato
+    if None in (match_data.get("prob_local"), match_data.get("prob_empate"), match_data.get("prob_visitante")):
+        try:
+            features_df = obtener_ultimas_estadisticas(payload.home, payload.away, df_maestro)
+            probs = modelo.predict_proba(features_df)[0]
+            mapa_probs = {
+                str(clase): round(float(prob) * 100, 2)
+                for clase, prob in zip(modelo.classes_, probs)
+            }
+            match_data["prob_local"] = match_data.get("prob_local") if match_data.get("prob_local") is not None else mapa_probs.get("H", mapa_probs.get("1", 0.0))
+            match_data["prob_empate"] = match_data.get("prob_empate") if match_data.get("prob_empate") is not None else mapa_probs.get("D", mapa_probs.get("0", 0.0))
+            match_data["prob_visitante"] = match_data.get("prob_visitante") if match_data.get("prob_visitante") is not None else mapa_probs.get("A", mapa_probs.get("2", 0.0))
+        except Exception:
+            match_data["prob_local"] = match_data.get("prob_local") or 0.0
+            match_data["prob_empate"] = match_data.get("prob_empate") or 0.0
+            match_data["prob_visitante"] = match_data.get("prob_visitante") or 0.0
+
+    filtro = (df_maestro["Home"] == payload.home) & (df_maestro["Away"] == payload.away)
+    partido = df_maestro[filtro].tail(1)
+
+    if not partido.empty:
+        if match_data.get("descanso_local") is None and "loc_descanso" in partido.columns:
+            match_data["descanso_local"] = int(partido["loc_descanso"].values[0])
+        if match_data.get("descanso_visitante") is None and "vis_descanso" in partido.columns:
+            match_data["descanso_visitante"] = int(partido["vis_descanso"].values[0])
+        if match_data.get("h2h") is None and {"h2h_victorias_local", "h2h_empates", "h2h_victorias_visitante"}.issubset(partido.columns):
+            match_data["h2h"] = (
+                f"{payload.home} {int(partido['h2h_victorias_local'].values[0])}, "
+                f"Empates {int(partido['h2h_empates'].values[0])}, "
+                f"{payload.away} {int(partido['h2h_victorias_visitante'].values[0])}"
+            )
+
+    if match_data.get("racha_local") is None:
+        h_hist = obtener_historial_equipo(df_maestro, payload.home, 5)
+        match_data["racha_local"] = f"{', '.join(h_hist['racha_resultados'])} ({h_hist['promedio_gf']} GF, {h_hist['promedio_gc']} GC)"
+
+    if match_data.get("racha_visitante") is None:
+        a_hist = obtener_historial_equipo(df_maestro, payload.away, 5)
+        match_data["racha_visitante"] = f"{', '.join(a_hist['racha_resultados'])} ({a_hist['promedio_gf']} GF, {a_hist['promedio_gc']} GC)"
+
+    for key in ("descanso_local", "descanso_visitante", "racha_local", "racha_visitante", "h2h"):
+        if match_data.get(key) is None:
+            match_data[key] = "N/D"
+
+    return generate_match_ai_response(
+        match_data=match_data,
+        action=payload.action,
+        question=payload.question or "",
+    )
