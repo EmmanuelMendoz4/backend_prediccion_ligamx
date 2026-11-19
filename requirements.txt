@@ -6,3 +6,4 @@ python-dotenv==1.2.4
 scikit-learn==1.6.1
 uvicorn==0.54.0
 sqlalchemy
+google-genai==3.6.1
